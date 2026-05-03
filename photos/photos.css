@@ -2,8 +2,10 @@
 .photos-header {
     display: flex;
     align-items: center;
-    gap: 20px;
+    justify-content: space-between;
+    width: 700px;
     margin-bottom: 40px;
+    padding: 0 2px;
 }
 
 .photos-header h1 {
