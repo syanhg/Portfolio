@@ -22,7 +22,6 @@
         .field { margin-bottom: 14px; }
         .field label { font-size: 12px; color: #bbb; display: block; margin-bottom: 4px; }
         .row { display: flex; gap: 8px; align-items: center; }
-        .row input { flex: 1; }
         .post-line {
             display: flex;
             justify-content: space-between;
@@ -33,10 +32,10 @@
         }
         .post-line:hover { color: #444; }
         .post-line.active { color: #333; }
-        .post-line span.dt { font-size: 12px; color: #ccc; }
-        #status { font-size: 13px; margin-top: 10px; min-height: 18px; }
-        #status.ok  { color: #5a9; }
-        #status.err { color: #c55; }
+        .post-line span.dt { font-size: 12px; color: #ccc; flex-shrink: 0; margin-left: 12px; }
+        .status-msg { font-size: 13px; margin-top: 10px; min-height: 18px; }
+        .status-msg.ok  { color: #5a9; }
+        .status-msg.err { color: #c55; }
         #auth-screen {
             position: fixed;
             inset: 0;
@@ -56,6 +55,28 @@
         .section-label { font-size: 12px; color: #bbb; }
         #signout-btn { font-size: 12px; color: #bbb; cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
         #signout-btn:hover { color: #666; }
+        .tabs { display: flex; gap: 20px; margin-bottom: 30px; }
+        .tab-btn { background: none; border: none; font-family: inherit; font-size: 16px; color: #bbb; cursor: pointer; padding: 0; }
+        .tab-btn.active { color: #666; }
+        .tab-btn:hover { color: #666; }
+        /* Photo grid */
+        .photo-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+        .photo-thumb { position: relative; width: 120px; height: 80px; }
+        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-thumb button {
+            position: absolute;
+            top: 4px; right: 4px;
+            background: rgba(0,0,0,0.5);
+            border: none;
+            color: #fff;
+            width: 20px; height: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .photo-thumb button:hover { background: rgba(0,0,0,0.8); }
+        input[type="file"] { border: none; padding: 0; font-size: 14px; color: #999; }
     </style>
 </head>
 <body>
@@ -72,39 +93,62 @@
 
 <!-- Admin panel -->
 <div id="admin" style="display:none" class="container">
-    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:40px;">
+    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:30px;">
         <h1><a href="../home" class="h1-link">Seungyong (Alex) Yang</a></h1>
         <button id="signout-btn" onclick="signOut()">sign out</button>
     </div>
 
-    <!-- Post list -->
-    <div style="margin-bottom:30px;">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('thoughts')">thoughts</button>
+        <button class="tab-btn"        onclick="showTab('photos')">photos</button>
+    </div>
+
+    <!-- Thoughts tab -->
+    <div id="tab-thoughts">
+        <div style="margin-bottom:30px;">
+            <div class="section-header">
+                <span class="section-label">posts</span>
+                <button class="nav-btn" onclick="newPost()">new post<span class="arrow">→</span></button>
+            </div>
+            <div id="post-list"></div>
+        </div>
+
+        <div id="editor" style="display:none; margin-bottom:30px;">
+            <div class="field">
+                <textarea id="post-body" placeholder="Write your thought..."></textarea>
+            </div>
+            <div class="field">
+                <label>date</label>
+                <input type="date" id="post-date">
+            </div>
+            <div class="row">
+                <button class="nav-btn" onclick="save()">publish<span class="arrow">→</span></button>
+                <button class="nav-btn" id="delete-btn" onclick="removePost()" style="display:none">delete<span class="arrow">→</span></button>
+            </div>
+            <div id="post-status" class="status-msg"></div>
+        </div>
+    </div>
+
+    <!-- Photos tab -->
+    <div id="tab-photos" style="display:none;">
         <div class="section-header">
-            <span class="section-label">posts</span>
-            <button class="nav-btn" onclick="newPost()">new post<span class="arrow">→</span></button>
-        </div>
-        <div id="post-list"></div>
-    </div>
-
-    <!-- Editor -->
-    <div id="editor" style="display:none; margin-bottom:30px;">
-        <div class="field">
-            <textarea id="post-body" placeholder="Write your thought..."></textarea>
+            <span class="section-label">photos</span>
         </div>
         <div class="field">
-            <label>date</label>
-            <input type="date" id="post-date">
+            <label>upload</label>
+            <div class="row">
+                <input type="file" id="photo-upload" accept="image/*" multiple>
+                <button class="nav-btn" onclick="uploadPhotos()">upload<span class="arrow">→</span></button>
+            </div>
         </div>
-        <div class="row">
-            <button class="nav-btn" onclick="save()">publish<span class="arrow">→</span></button>
-            <button class="nav-btn" id="delete-btn" onclick="remove()" style="display:none">delete<span class="arrow">→</span></button>
-        </div>
-        <div id="status"></div>
+        <div id="photo-status" class="status-msg"></div>
+        <div id="photo-grid" class="photo-grid"></div>
     </div>
 
-    <div class="nav">
+    <div class="nav" style="margin-top:40px;">
         <a href="../home"     class="nav-btn">home<span class="arrow">→</span></a>
         <a href="../thoughts" class="nav-btn">thoughts<span class="arrow">→</span></a>
+        <a href="../photos"   class="nav-btn">photos<span class="arrow">→</span></a>
     </div>
 </div>
 
@@ -117,17 +161,14 @@
 
     let currentId = null;
     let posts = [];
+    let activeTab = 'thoughts';
 
-    // Check existing session on load
-    sb.auth.getSession().then(({ data: { session } }) => {
-        if (session) showAdmin();
-    });
+    sb.auth.getSession().then(({ data: { session } }) => { if (session) showAdmin(); });
 
-    // Login
     document.getElementById('login-btn').onclick = login;
-    ['email', 'password'].forEach(id => {
-        document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
-    });
+    ['email', 'password'].forEach(id =>
+        document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') login(); })
+    );
 
     async function login() {
         const email    = document.getElementById('email').value.trim();
@@ -139,10 +180,7 @@
         showAdmin();
     }
 
-    async function signOut() {
-        await sb.auth.signOut();
-        location.reload();
-    }
+    async function signOut() { await sb.auth.signOut(); location.reload(); }
 
     function showAdmin() {
         document.getElementById('auth-screen').style.display = 'none';
@@ -150,20 +188,27 @@
         loadPosts();
     }
 
-    // CRUD
+    function showTab(tab) {
+        activeTab = tab;
+        document.getElementById('tab-thoughts').style.display = tab === 'thoughts' ? 'block' : 'none';
+        document.getElementById('tab-photos').style.display   = tab === 'photos'   ? 'block' : 'none';
+        document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+            btn.classList.toggle('active', (i === 0 && tab === 'thoughts') || (i === 1 && tab === 'photos'));
+        });
+        if (tab === 'photos') loadPhotos();
+    }
+
+    // ── Thoughts ────────────────────────────────────────────
     async function loadPosts() {
         const { data, error } = await sb.from('posts').select('*').order('date', { ascending: false });
-        if (error) { setStatus('Load failed: ' + error.message, 'err'); return; }
+        if (error) { setPostStatus('Load failed: ' + error.message, 'err'); return; }
         posts = data || [];
         renderList();
     }
 
     function renderList() {
         const el = document.getElementById('post-list');
-        if (!posts.length) {
-            el.innerHTML = '<p style="font-size:14px;color:#ccc;">No posts yet</p>';
-            return;
-        }
+        if (!posts.length) { el.innerHTML = '<p style="font-size:14px;color:#ccc;">No posts yet</p>'; return; }
         el.innerHTML = posts.map(p => `
             <div class="post-line ${p.id === currentId ? 'active' : ''}" onclick="editPost('${p.id}')">
                 <span>${p.body.slice(0, 60)}${p.body.length > 60 ? '…' : ''}</span>
@@ -178,7 +223,7 @@
         document.getElementById('post-body').value = '';
         document.getElementById('delete-btn').style.display = 'none';
         document.getElementById('editor').style.display = 'block';
-        setStatus('');
+        setPostStatus('');
         renderList();
         document.getElementById('post-body').focus();
     }
@@ -191,41 +236,83 @@
         document.getElementById('post-body').value = post.body;
         document.getElementById('delete-btn').style.display = 'inline-flex';
         document.getElementById('editor').style.display = 'block';
-        setStatus('');
+        setPostStatus('');
         renderList();
     }
 
     async function save() {
         const date = document.getElementById('post-date').value;
         const body = document.getElementById('post-body').value.trim();
-        if (!body) { setStatus('Write something first', 'err'); return; }
-        setStatus('Saving…', '');
-
+        if (!body) { setPostStatus('Write something first', 'err'); return; }
+        setPostStatus('Saving…', '');
         const payload = { date, body };
         const { error } = currentId
             ? await sb.from('posts').update(payload).eq('id', currentId)
             : await sb.from('posts').insert(payload);
-
-        if (error) { setStatus('Error: ' + error.message, 'err'); return; }
-        setStatus('Published!', 'ok');
+        if (error) { setPostStatus('Error: ' + error.message, 'err'); return; }
+        setPostStatus('Published!', 'ok');
         await loadPosts();
     }
 
-    async function remove() {
+    async function removePost() {
         if (!currentId || !confirm('Delete this post?')) return;
-        setStatus('Deleting…', '');
+        setPostStatus('Deleting…', '');
         const { error } = await sb.from('posts').delete().eq('id', currentId);
-        if (error) { setStatus('Error: ' + error.message, 'err'); return; }
+        if (error) { setPostStatus('Error: ' + error.message, 'err'); return; }
         currentId = null;
         document.getElementById('editor').style.display = 'none';
-        setStatus('Deleted', 'ok');
+        setPostStatus('Deleted', 'ok');
         await loadPosts();
     }
 
-    function setStatus(msg, type) {
-        const el = document.getElementById('status');
+    function setPostStatus(msg, type) {
+        const el = document.getElementById('post-status');
         el.textContent = msg;
-        el.className = type || '';
+        el.className = 'status-msg ' + (type || '');
+    }
+
+    // ── Photos ───────────────────────────────────────────────
+    async function loadPhotos() {
+        const { data: files, error } = await sb.storage.from('photos').list('', { sortBy: { column: 'created_at', order: 'asc' } });
+        const grid = document.getElementById('photo-grid');
+        if (error || !files?.length) { grid.innerHTML = '<p style="font-size:14px;color:#ccc;">No photos yet</p>'; return; }
+        grid.innerHTML = files.map(f => {
+            const url = sb.storage.from('photos').getPublicUrl(f.name).data.publicUrl;
+            return `
+                <div class="photo-thumb">
+                    <img src="${url}" alt="${f.name}">
+                    <button onclick="deletePhoto('${f.name}')">×</button>
+                </div>`;
+        }).join('');
+    }
+
+    async function uploadPhotos() {
+        const input = document.getElementById('photo-upload');
+        const files = Array.from(input.files);
+        if (!files.length) return;
+        setPhotoStatus('Uploading…', '');
+        for (const file of files) {
+            const name = `${Date.now()}_${file.name}`;
+            const { error } = await sb.storage.from('photos').upload(name, file);
+            if (error) { setPhotoStatus('Error: ' + error.message, 'err'); return; }
+        }
+        input.value = '';
+        setPhotoStatus('Uploaded!', 'ok');
+        await loadPhotos();
+    }
+
+    async function deletePhoto(name) {
+        if (!confirm('Delete this photo?')) return;
+        const { error } = await sb.storage.from('photos').remove([name]);
+        if (error) { setPhotoStatus('Error: ' + error.message, 'err'); return; }
+        setPhotoStatus('Deleted', 'ok');
+        await loadPhotos();
+    }
+
+    function setPhotoStatus(msg, type) {
+        const el = document.getElementById('photo-status');
+        el.textContent = msg;
+        el.className = 'status-msg ' + (type || '');
     }
 </script>
 </body>

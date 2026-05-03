@@ -12,25 +12,12 @@
         <h1><a href="../home" class="h1-link">Seungyong (Alex) Yang</a></h1>
 
         <div class="carousel">
-            <div class="carousel-track">
-                <img src="photo1.png" alt="Photo 1" onclick="openLightbox(0)">
-                <img src="photo2.png" alt="Photo 2" onclick="openLightbox(1)">
-                <img src="photo3.png" alt="Photo 3" onclick="openLightbox(2)">
-                <img src="photo1.png" alt="Photo 1" onclick="openLightbox(0)">
-                <img src="photo2.png" alt="Photo 2" onclick="openLightbox(1)">
-                <img src="photo3.png" alt="Photo 3" onclick="openLightbox(2)">
-                <img src="photo1.png" alt="Photo 1" onclick="openLightbox(0)">
-                <img src="photo2.png" alt="Photo 2" onclick="openLightbox(1)">
-                <img src="photo3.png" alt="Photo 3" onclick="openLightbox(2)">
-                <img src="photo1.png" alt="Photo 1" onclick="openLightbox(0)">
-                <img src="photo2.png" alt="Photo 2" onclick="openLightbox(1)">
-                <img src="photo3.png" alt="Photo 3" onclick="openLightbox(2)">
-            </div>
+            <div class="carousel-track" id="carousel-track"></div>
         </div>
 
         <div class="nav">
-            <a href="../home" class="nav-btn">home<span class="arrow">→</span></a>
-            <a href="../quotes" class="nav-btn">quotes<span class="arrow">→</span></a>
+            <a href="../home"    class="nav-btn">home<span class="arrow">→</span></a>
+            <a href="../quotes"  class="nav-btn">quotes<span class="arrow">→</span></a>
             <a href="../thoughts" class="nav-btn">thoughts<span class="arrow">→</span></a>
         </div>
     </div>
@@ -40,6 +27,35 @@
         <img id="lightboxImg" src="" alt="">
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="photos.js"></script>
+    <script>
+        const sb = supabase.createClient(
+            'https://wzzyinimajfxuueywxdy.supabase.co',
+            'sb_publishable_UxPaRgkX2R9XHsTbioEfRw_eqPN9azu'
+        );
+
+        async function loadCarousel() {
+            const { data: files } = await sb.storage.from('photos').list('', { sortBy: { column: 'created_at', order: 'asc' } });
+            if (!files?.length) return;
+
+            const urls = files.map(f => sb.storage.from('photos').getPublicUrl(f.name).data.publicUrl);
+            setImages(urls);
+
+            const track = document.getElementById('carousel-track');
+            const doubled = [...urls, ...urls];
+            track.innerHTML = doubled.map((url, i) =>
+                `<img src="${url}" alt="Photo ${(i % urls.length) + 1}" onclick="openLightbox(${i % urls.length})">`
+            ).join('');
+
+            // Set animation distance to width of one set
+            const oneSetWidth = urls.length * (300 + 15);
+            const style = document.createElement('style');
+            style.textContent = `@keyframes slide { from { transform: translateX(0); } to { transform: translateX(-${oneSetWidth}px); } }`;
+            document.head.appendChild(style);
+        }
+
+        loadCarousel();
+    </script>
 </body>
 </html>
