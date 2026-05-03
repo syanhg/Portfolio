@@ -1,4 +1,4 @@
-const images = ["../photo1.png", "../photo2.png", "../photo3.png"];
+const images = ["photo1.png", "photo2.png", "photo3.png"];
 
 window.openLightbox = function(index) {
   const lightbox = document.getElementById('lightbox');
