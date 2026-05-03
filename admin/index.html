@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../style.css">
     <style>
         input[type="text"], input[type="password"], input[type="date"], textarea {
             font-family: inherit;
@@ -69,7 +69,7 @@
 
 <!-- Admin panel -->
 <div id="admin" style="display:none" class="container">
-    <h1><a href="index.html" class="h1-link">Seungyong (Alex) Yang</a></h1>
+    <h1><a href="../" class="h1-link">Seungyong (Alex) Yang</a></h1>
 
     <!-- GitHub token -->
     <div class="field" style="margin-bottom:30px;">
@@ -111,8 +111,8 @@
     </div>
 
     <div class="nav">
-        <a href="index.html" class="nav-btn">home<span class="arrow">→</span></a>
-        <a href="thoughts.html" class="nav-btn">thoughts<span class="arrow">→</span></a>
+        <a href="../" class="nav-btn">home<span class="arrow">→</span></a>
+        <a href="../thoughts" class="nav-btn">thoughts<span class="arrow">→</span></a>
     </div>
 </div>
 
@@ -128,7 +128,6 @@
     let fileSha   = null;
     let currentId = null;
 
-    // Auth
     document.getElementById('auth-btn').onclick = auth;
     document.getElementById('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') auth(); });
 
@@ -159,7 +158,6 @@
         loadPosts();
     }
 
-    // GitHub API helpers
     async function ghGet(path) {
         const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}?ref=${BRANCH}`, {
             headers: { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json' }
