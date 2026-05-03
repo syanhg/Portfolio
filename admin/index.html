@@ -89,16 +89,11 @@
     <!-- Editor -->
     <div id="editor" style="display:none; margin-bottom:30px;">
         <div class="field">
-            <label>title</label>
-            <input type="text" id="post-title" placeholder="Title">
+            <textarea id="post-body" placeholder="Write your thought..."></textarea>
         </div>
         <div class="field">
             <label>date</label>
             <input type="date" id="post-date">
-        </div>
-        <div class="field">
-            <label>body</label>
-            <textarea id="post-body" placeholder="Write your thoughts..."></textarea>
         </div>
         <div class="row">
             <button class="nav-btn" onclick="save()">publish<span class="arrow">→</span></button>
@@ -171,7 +166,7 @@
         }
         el.innerHTML = posts.map(p => `
             <div class="post-line ${p.id === currentId ? 'active' : ''}" onclick="editPost('${p.id}')">
-                <span>${p.title || '(untitled)'}</span>
+                <span>${p.body.slice(0, 60)}${p.body.length > 60 ? '…' : ''}</span>
                 <span class="dt">${p.date}</span>
             </div>
         `).join('');
@@ -179,21 +174,19 @@
 
     function newPost() {
         currentId = null;
-        document.getElementById('post-title').value = '';
         document.getElementById('post-date').value = new Date().toISOString().slice(0, 10);
         document.getElementById('post-body').value = '';
         document.getElementById('delete-btn').style.display = 'none';
         document.getElementById('editor').style.display = 'block';
         setStatus('');
         renderList();
-        document.getElementById('post-title').focus();
+        document.getElementById('post-body').focus();
     }
 
     function editPost(id) {
         const post = posts.find(p => p.id === id);
         if (!post) return;
         currentId = id;
-        document.getElementById('post-title').value = post.title;
         document.getElementById('post-date').value = post.date;
         document.getElementById('post-body').value = post.body;
         document.getElementById('delete-btn').style.display = 'inline-flex';
@@ -203,13 +196,12 @@
     }
 
     async function save() {
-        const title = document.getElementById('post-title').value.trim();
-        const date  = document.getElementById('post-date').value;
-        const body  = document.getElementById('post-body').value.trim();
-        if (!title || !body) { setStatus('Title and body required', 'err'); return; }
+        const date = document.getElementById('post-date').value;
+        const body = document.getElementById('post-body').value.trim();
+        if (!body) { setStatus('Write something first', 'err'); return; }
         setStatus('Saving…', '');
 
-        const payload = { title, date, body };
+        const payload = { date, body };
         const { error } = currentId
             ? await sb.from('posts').update(payload).eq('id', currentId)
             : await sb.from('posts').insert(payload);
