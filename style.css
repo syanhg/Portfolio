@@ -52,7 +52,7 @@ a:hover {
     display: inline-flex;
     align-items: center;
     gap: 0;
-    padding: 6px 14px;
+    padding: 2px 6px;
     border: 1px solid #666;
     font-size: 16px;
     font-family: inherit;
