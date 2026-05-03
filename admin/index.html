@@ -341,7 +341,7 @@
         const file    = input.files[0];
         if (!file) return;
         setPhotoStatus('Uploading…', '');
-        const filename = `${Date.now()}_${file.name}`;
+        const filename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
         const { error } = await sb.storage.from('photos').upload(filename, file);
         if (error) { setPhotoStatus('Error: ' + error.message, 'err'); return; }
         await sb.from('photos').insert({ filename, caption });
