@@ -116,6 +116,14 @@
 
 .close-btn:hover { opacity: 0.4; }
 
+#lightboxCaption {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    text-align: center;
+    margin-top: 12px;
+    font-family: 'Times New Roman', Times, serif;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
     .carousel {

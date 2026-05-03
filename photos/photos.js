@@ -1,12 +1,12 @@
-let images = [];
+let images = []; // [{url, caption}]
 
-function setImages(urls) { images = urls; }
+function setImages(data) { images = data; }
 
 window.openLightbox = function(index) {
-    const lightbox    = document.getElementById('lightbox');
-    const lightboxImg = document.getElementById('lightboxImg');
-    lightboxImg.src   = images[index];
-    lightbox.classList.add('active');
+    const { url, caption } = images[index];
+    document.getElementById('lightboxImg').src         = url;
+    document.getElementById('lightboxCaption').textContent = caption || '';
+    document.getElementById('lightbox').classList.add('active');
     document.body.style.overflow = 'hidden';
 };
 

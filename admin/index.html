@@ -61,8 +61,17 @@
         .tab-btn:hover { color: #666; }
         /* Photo grid */
         .photo-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-        .photo-thumb { position: relative; width: 120px; height: 80px; }
-        .photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .photo-thumb { position: relative; width: 120px; }
+        .photo-thumb img { width: 100%; height: 80px; object-fit: cover; display: block; }
+        .photo-thumb input[type="text"] {
+            width: 100%;
+            font-size: 11px;
+            padding: 2px 4px;
+            border: none;
+            border-bottom: 1px solid #eee;
+            box-sizing: border-box;
+            color: #999;
+        }
         .photo-thumb button {
             position: absolute;
             top: 4px; right: 4px;
@@ -135,12 +144,14 @@
             <span class="section-label">photos</span>
         </div>
         <div class="field">
-            <label>upload</label>
-            <div class="row">
-                <input type="file" id="photo-upload" accept="image/*" multiple>
-                <button class="nav-btn" onclick="uploadPhotos()">upload<span class="arrow">→</span></button>
-            </div>
+            <label>image</label>
+            <input type="file" id="photo-upload" accept="image/*">
         </div>
+        <div class="field">
+            <label>caption</label>
+            <input type="text" id="photo-caption" placeholder="Optional caption">
+        </div>
+        <button class="nav-btn" onclick="uploadPhoto()">upload<span class="arrow">→</span></button>
         <div id="photo-status" class="status-msg"></div>
         <div id="photo-grid" class="photo-grid"></div>
     </div>
@@ -273,38 +284,54 @@
 
     // ── Photos ───────────────────────────────────────────────
     async function loadPhotos() {
-        const { data: files, error } = await sb.storage.from('photos').list('', { sortBy: { column: 'created_at', order: 'asc' } });
+        const [{ data: files, error }, { data: photosData }] = await Promise.all([
+            sb.storage.from('photos').list('', { sortBy: { column: 'created_at', order: 'asc' } }),
+            sb.from('photos').select('filename, caption')
+        ]);
         const grid = document.getElementById('photo-grid');
         if (error || !files?.length) { grid.innerHTML = '<p style="font-size:14px;color:#ccc;">No photos yet</p>'; return; }
+        const captionMap = {};
+        photosData?.forEach(p => captionMap[p.filename] = p.caption);
         grid.innerHTML = files.map(f => {
             const url = sb.storage.from('photos').getPublicUrl(f.name).data.publicUrl;
+            const cap = captionMap[f.name] || '';
             return `
                 <div class="photo-thumb">
                     <img src="${url}" alt="${f.name}">
                     <button onclick="deletePhoto('${f.name}')">×</button>
+                    <input type="text" value="${cap}" placeholder="caption"
+                           onblur="updateCaption('${f.name}', this.value)"
+                           onkeydown="if(event.key==='Enter') this.blur()">
                 </div>`;
         }).join('');
     }
 
-    async function uploadPhotos() {
-        const input = document.getElementById('photo-upload');
-        const files = Array.from(input.files);
-        if (!files.length) return;
+    async function uploadPhoto() {
+        const input   = document.getElementById('photo-upload');
+        const caption = document.getElementById('photo-caption').value.trim();
+        const file    = input.files[0];
+        if (!file) return;
         setPhotoStatus('Uploading…', '');
-        for (const file of files) {
-            const name = `${Date.now()}_${file.name}`;
-            const { error } = await sb.storage.from('photos').upload(name, file);
-            if (error) { setPhotoStatus('Error: ' + error.message, 'err'); return; }
-        }
+        const filename = `${Date.now()}_${file.name}`;
+        const { error } = await sb.storage.from('photos').upload(filename, file);
+        if (error) { setPhotoStatus('Error: ' + error.message, 'err'); return; }
+        await sb.from('photos').insert({ filename, caption });
         input.value = '';
+        document.getElementById('photo-caption').value = '';
         setPhotoStatus('Uploaded!', 'ok');
         await loadPhotos();
     }
 
-    async function deletePhoto(name) {
+    async function updateCaption(filename, caption) {
+        await sb.from('photos').upsert({ filename, caption }, { onConflict: 'filename' });
+    }
+
+    async function deletePhoto(filename) {
         if (!confirm('Delete this photo?')) return;
-        const { error } = await sb.storage.from('photos').remove([name]);
-        if (error) { setPhotoStatus('Error: ' + error.message, 'err'); return; }
+        await Promise.all([
+            sb.storage.from('photos').remove([filename]),
+            sb.from('photos').delete().eq('filename', filename)
+        ]);
         setPhotoStatus('Deleted', 'ok');
         await loadPhotos();
     }
