@@ -6,7 +6,7 @@
     <title>Admin</title>
     <link rel="stylesheet" href="../style.css">
     <style>
-        input[type="text"], input[type="password"], input[type="date"], textarea {
+        input[type="text"], input[type="password"], input[type="email"], input[type="date"], textarea {
             font-family: inherit;
             font-size: 16px;
             color: #666;
@@ -35,7 +35,7 @@
         .post-line.active { color: #333; }
         .post-line span.dt { font-size: 12px; color: #ccc; }
         #status { font-size: 13px; margin-top: 10px; min-height: 18px; }
-        #status.ok { color: #5a9; }
+        #status.ok  { color: #5a9; }
         #status.err { color: #c55; }
         #auth-screen {
             position: fixed;
@@ -45,7 +45,7 @@
             justify-content: center;
         }
         #auth-box { display: flex; flex-direction: column; gap: 8px; }
-        #auth-box input { width: 200px; }
+        #auth-box input { width: 240px; }
         #auth-error { font-size: 13px; color: #c55; min-height: 18px; }
         .section-header {
             display: flex;
@@ -54,30 +54,27 @@
             margin-bottom: 12px;
         }
         .section-label { font-size: 12px; color: #bbb; }
+        #signout-btn { font-size: 12px; color: #bbb; cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; }
+        #signout-btn:hover { color: #666; }
     </style>
 </head>
 <body>
 
-<!-- Password gate -->
+<!-- Login screen -->
 <div id="auth-screen">
     <div id="auth-box">
-        <input type="password" id="pwd" placeholder="password" autofocus>
-        <button class="nav-btn" id="auth-btn">enter<span class="arrow">→</span></button>
+        <input type="email"    id="email"    placeholder="email" autofocus>
+        <input type="password" id="password" placeholder="password">
+        <button class="nav-btn" id="login-btn">sign in<span class="arrow">→</span></button>
         <div id="auth-error"></div>
     </div>
 </div>
 
 <!-- Admin panel -->
 <div id="admin" style="display:none" class="container">
-    <h1><a href="../home" class="h1-link">Seungyong (Alex) Yang</a></h1>
-
-    <!-- GitHub token -->
-    <div class="field" style="margin-bottom:30px;">
-        <label>GitHub token</label>
-        <div class="row">
-            <input type="password" id="pat" placeholder="ghp_...">
-            <button class="nav-btn" onclick="savePat()">save<span class="arrow">→</span></button>
-        </div>
+    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:40px;">
+        <h1><a href="../home" class="h1-link">Seungyong (Alex) Yang</a></h1>
+        <button id="signout-btn" onclick="signOut()">sign out</button>
     </div>
 
     <!-- Post list -->
@@ -104,95 +101,66 @@
             <textarea id="post-body" placeholder="Write your thoughts..."></textarea>
         </div>
         <div class="row">
-            <button class="nav-btn" onclick="publishPost()">publish<span class="arrow">→</span></button>
-            <button class="nav-btn" id="delete-btn" onclick="deletePost()" style="display:none">delete<span class="arrow">→</span></button>
+            <button class="nav-btn" onclick="save()">publish<span class="arrow">→</span></button>
+            <button class="nav-btn" id="delete-btn" onclick="remove()" style="display:none">delete<span class="arrow">→</span></button>
         </div>
         <div id="status"></div>
     </div>
 
     <div class="nav">
-        <a href="../home" class="nav-btn">home<span class="arrow">→</span></a>
+        <a href="../home"     class="nav-btn">home<span class="arrow">→</span></a>
         <a href="../thoughts" class="nav-btn">thoughts<span class="arrow">→</span></a>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-    // To change password: open browser console and run btoa('yournewpassword'), then replace the string below
-    const PWD = atob('c29mZm8='); // 'soffo'
+    const sb = supabase.createClient(
+        'https://wzzyinimajfxuueywxdy.supabase.co',
+        'sb_publishable_UxPaRgkX2R9XHsTbioEfRw_eqPN9azu'
+    );
 
-    const REPO   = 'syanhg/Portfolio';
-    const BRANCH = 'main';
-    const FILE   = 'posts.json';
-
-    let posts     = [];
-    let fileSha   = null;
     let currentId = null;
+    let posts = [];
 
-    document.getElementById('auth-btn').onclick = auth;
-    document.getElementById('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') auth(); });
+    // Check existing session on load
+    sb.auth.getSession().then(({ data: { session } }) => {
+        if (session) showAdmin();
+    });
 
-    function auth() {
-        if (document.getElementById('pwd').value === PWD) {
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('admin').style.display = 'block';
-            init();
-        } else {
-            document.getElementById('pwd').value = '';
-            document.getElementById('auth-error').textContent = 'incorrect password';
-        }
+    // Login
+    document.getElementById('login-btn').onclick = login;
+    ['email', 'password'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+    });
+
+    async function login() {
+        const email    = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const errEl    = document.getElementById('auth-error');
+        errEl.textContent = '';
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) { errEl.textContent = error.message; return; }
+        showAdmin();
     }
 
-    function init() {
-        const saved = localStorage.getItem('gh_pat');
-        if (saved) document.getElementById('pat').value = saved;
-        if (saved) loadPosts();
+    async function signOut() {
+        await sb.auth.signOut();
+        location.reload();
     }
 
-    function getToken() { return localStorage.getItem('gh_pat') || ''; }
-
-    function savePat() {
-        const t = document.getElementById('pat').value.trim();
-        if (!t) return;
-        localStorage.setItem('gh_pat', t);
-        setStatus('Token saved', 'ok');
+    function showAdmin() {
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('admin').style.display = 'block';
         loadPosts();
     }
 
-    async function ghGet(path) {
-        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}?ref=${BRANCH}`, {
-            headers: { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json' }
-        });
-        if (!res.ok) throw new Error(`${res.status}`);
-        return res.json();
-    }
-
-    async function ghPut(path, content, sha, message) {
-        const encoded = btoa(unescape(encodeURIComponent(content)));
-        const body = { message, content: encoded, branch: BRANCH };
-        if (sha) body.sha = sha;
-        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, {
-            method: 'PUT',
-            headers: {
-                Authorization: `token ${getToken()}`,
-                'Content-Type': 'application/json',
-                Accept: 'application/vnd.github.v3+json'
-            },
-            body: JSON.stringify(body)
-        });
-        if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
-        return res.json();
-    }
-
+    // CRUD
     async function loadPosts() {
-        try {
-            const data = await ghGet(FILE);
-            fileSha = data.sha;
-            posts = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g, '')))));
-            renderList();
-        } catch (e) {
-            if (e.message === '404') { posts = []; fileSha = null; renderList(); }
-            else setStatus('Load failed: ' + e.message, 'err');
-        }
+        const { data, error } = await sb.from('posts').select('*').order('date', { ascending: false });
+        if (error) { setStatus('Load failed: ' + error.message, 'err'); return; }
+        posts = data || [];
+        renderList();
     }
 
     function renderList() {
@@ -201,7 +169,7 @@
             el.innerHTML = '<p style="font-size:14px;color:#ccc;">No posts yet</p>';
             return;
         }
-        el.innerHTML = [...posts].reverse().map(p => `
+        el.innerHTML = posts.map(p => `
             <div class="post-line ${p.id === currentId ? 'active' : ''}" onclick="editPost('${p.id}')">
                 <span>${p.title || '(untitled)'}</span>
                 <span class="dt">${p.date}</span>
@@ -234,52 +202,32 @@
         renderList();
     }
 
-    async function publishPost() {
+    async function save() {
         const title = document.getElementById('post-title').value.trim();
         const date  = document.getElementById('post-date').value;
         const body  = document.getElementById('post-body').value.trim();
         if (!title || !body) { setStatus('Title and body required', 'err'); return; }
         setStatus('Saving…', '');
-        try {
-            const fresh = await ghGet(FILE);
-            fileSha = fresh.sha;
-            posts = JSON.parse(decodeURIComponent(escape(atob(fresh.content.replace(/\n/g, '')))));
 
-            if (currentId) {
-                const idx = posts.findIndex(p => p.id === currentId);
-                if (idx !== -1) posts[idx] = { id: currentId, title, date, body };
-            } else {
-                currentId = Date.now().toString();
-                posts.push({ id: currentId, title, date, body });
-            }
+        const payload = { title, date, body };
+        const { error } = currentId
+            ? await sb.from('posts').update(payload).eq('id', currentId)
+            : await sb.from('posts').insert(payload);
 
-            const result = await ghPut(FILE, JSON.stringify(posts, null, 2), fileSha, `${currentId ? 'Update' : 'Add'} thought: ${title}`);
-            fileSha = result.content.sha;
-            setStatus('Published!', 'ok');
-            renderList();
-        } catch (e) {
-            setStatus('Error: ' + e.message, 'err');
-        }
+        if (error) { setStatus('Error: ' + error.message, 'err'); return; }
+        setStatus('Published!', 'ok');
+        await loadPosts();
     }
 
-    async function deletePost() {
+    async function remove() {
         if (!currentId || !confirm('Delete this post?')) return;
         setStatus('Deleting…', '');
-        try {
-            const fresh = await ghGet(FILE);
-            fileSha = fresh.sha;
-            posts = JSON.parse(decodeURIComponent(escape(atob(fresh.content.replace(/\n/g, '')))));
-            posts = posts.filter(p => p.id !== currentId);
-
-            const result = await ghPut(FILE, JSON.stringify(posts, null, 2), fileSha, 'Delete thought');
-            fileSha = result.content.sha;
-            currentId = null;
-            document.getElementById('editor').style.display = 'none';
-            setStatus('Deleted', 'ok');
-            renderList();
-        } catch (e) {
-            setStatus('Error: ' + e.message, 'err');
-        }
+        const { error } = await sb.from('posts').delete().eq('id', currentId);
+        if (error) { setStatus('Error: ' + error.message, 'err'); return; }
+        currentId = null;
+        document.getElementById('editor').style.display = 'none';
+        setStatus('Deleted', 'ok');
+        await loadPosts();
     }
 
     function setStatus(msg, type) {
