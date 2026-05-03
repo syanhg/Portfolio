@@ -46,6 +46,10 @@
     transition: opacity 0.3s;
 }
 
+.carousel:hover .carousel-track {
+    animation-play-state: paused;
+}
+
 .carousel-track img:hover {
     opacity: 0.8;
 }
@@ -64,6 +68,7 @@
     left: 0;
     width: 100vw;
     height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
     z-index: 1000;
     align-items: center;
     justify-content: center;
@@ -73,52 +78,30 @@
     display: flex;
 }
 
-#liquidGlassContainer {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
-}
-
-#liquidGlassContainer canvas {
-    width: 100% !important;
-    height: 100% !important;
-}
-
 #lightboxImg {
-    position: relative;
-    z-index: 2;
-    max-width: 85%;
-    max-height: 85vh;
+    max-width: 80vw;
+    max-height: 80vh;
     object-fit: contain;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-    pointer-events: none;
+    display: block;
 }
 
 .close-btn {
     position: fixed;
-    top: 30px;
-    right: 30px;
-    z-index: 3;
-    background: rgba(255, 255, 255, 0.9);
+    top: 24px;
+    right: 24px;
+    z-index: 1001;
+    background: none;
     border: none;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
     font-size: 28px;
     cursor: pointer;
-    color: #666;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    color: #fff;
     line-height: 1;
-    transition: all 0.3s ease;
-    font-weight: 300;
+    padding: 4px 8px;
+    transition: opacity 0.2s;
 }
 
 .close-btn:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: rotate(90deg);
+    opacity: 0.6;
 }
 
 /* Mobile */
