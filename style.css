@@ -44,6 +44,10 @@ a {
     text-decoration: none;
 }
 
+p a {
+    text-decoration: underline;
+}
+
 .h1-link {
     color: inherit;
     border-bottom: none;
