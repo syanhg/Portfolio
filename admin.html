@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        input[type="text"], input[type="password"], input[type="date"], textarea {
+            font-family: inherit;
+            font-size: 16px;
+            color: #666;
+            border: 1px solid #ccc;
+            background: transparent;
+            padding: 4px 8px;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        input:focus, textarea:focus { border-color: #666; }
+        textarea { height: 280px; resize: vertical; line-height: 1.6; }
+        .field { margin-bottom: 14px; }
+        .field label { font-size: 12px; color: #bbb; display: block; margin-bottom: 4px; }
+        .row { display: flex; gap: 8px; align-items: center; }
+        .row input { flex: 1; }
+        .post-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .post-line:hover { color: #444; }
+        .post-line.active { color: #333; }
+        .post-line span.dt { font-size: 12px; color: #ccc; }
+        #status { font-size: 13px; margin-top: 10px; min-height: 18px; }
+        #status.ok { color: #5a9; }
+        #status.err { color: #c55; }
+        #auth-screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #auth-box { display: flex; flex-direction: column; gap: 8px; }
+        #auth-box input { width: 200px; }
+        #auth-error { font-size: 13px; color: #c55; min-height: 18px; }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .section-label { font-size: 12px; color: #bbb; }
+    </style>
+</head>
+<body>
+
+<!-- Password gate -->
+<div id="auth-screen">
+    <div id="auth-box">
+        <input type="password" id="pwd" placeholder="password" autofocus>
+        <button class="nav-btn" id="auth-btn">enter<span class="arrow">→</span></button>
+        <div id="auth-error"></div>
+    </div>
+</div>
+
+<!-- Admin panel -->
+<div id="admin" style="display:none" class="container">
+    <h1><a href="index.html" class="h1-link">Seungyong (Alex) Yang</a></h1>
+
+    <!-- GitHub token -->
+    <div class="field" style="margin-bottom:30px;">
+        <label>GitHub token</label>
+        <div class="row">
+            <input type="password" id="pat" placeholder="ghp_...">
+            <button class="nav-btn" onclick="savePat()">save<span class="arrow">→</span></button>
+        </div>
+    </div>
+
+    <!-- Post list -->
+    <div style="margin-bottom:30px;">
+        <div class="section-header">
+            <span class="section-label">posts</span>
+            <button class="nav-btn" onclick="newPost()">new post<span class="arrow">→</span></button>
+        </div>
+        <div id="post-list"></div>
+    </div>
+
+    <!-- Editor -->
+    <div id="editor" style="display:none; margin-bottom:30px;">
+        <div class="field">
+            <label>title</label>
+            <input type="text" id="post-title" placeholder="Title">
+        </div>
+        <div class="field">
+            <label>date</label>
+            <input type="date" id="post-date">
+        </div>
+        <div class="field">
+            <label>body</label>
+            <textarea id="post-body" placeholder="Write your thoughts..."></textarea>
+        </div>
+        <div class="row">
+            <button class="nav-btn" onclick="publishPost()">publish<span class="arrow">→</span></button>
+            <button class="nav-btn" id="delete-btn" onclick="deletePost()" style="display:none">delete<span class="arrow">→</span></button>
+        </div>
+        <div id="status"></div>
+    </div>
+
+    <div class="nav">
+        <a href="index.html" class="nav-btn">home<span class="arrow">→</span></a>
+        <a href="thoughts.html" class="nav-btn">thoughts<span class="arrow">→</span></a>
+    </div>
+</div>
+
+<script>
+    // To change password: open browser console and run btoa('yournewpassword'), then replace the string below
+    const PWD = atob('c29mZm8='); // 'soffo'
+
+    const REPO   = 'syanhg/Portfolio';
+    const BRANCH = 'main';
+    const FILE   = 'posts.json';
+
+    let posts     = [];
+    let fileSha   = null;
+    let currentId = null;
+
+    // Auth
+    document.getElementById('auth-btn').onclick = auth;
+    document.getElementById('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') auth(); });
+
+    function auth() {
+        if (document.getElementById('pwd').value === PWD) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('admin').style.display = 'block';
+            init();
+        } else {
+            document.getElementById('pwd').value = '';
+            document.getElementById('auth-error').textContent = 'incorrect password';
+        }
+    }
+
+    function init() {
+        const saved = localStorage.getItem('gh_pat');
+        if (saved) document.getElementById('pat').value = saved;
+        if (saved) loadPosts();
+    }
+
+    function getToken() { return localStorage.getItem('gh_pat') || ''; }
+
+    function savePat() {
+        const t = document.getElementById('pat').value.trim();
+        if (!t) return;
+        localStorage.setItem('gh_pat', t);
+        setStatus('Token saved', 'ok');
+        loadPosts();
+    }
+
+    // GitHub API helpers
+    async function ghGet(path) {
+        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}?ref=${BRANCH}`, {
+            headers: { Authorization: `token ${getToken()}`, Accept: 'application/vnd.github.v3+json' }
+        });
+        if (!res.ok) throw new Error(`${res.status}`);
+        return res.json();
+    }
+
+    async function ghPut(path, content, sha, message) {
+        const encoded = btoa(unescape(encodeURIComponent(content)));
+        const body = { message, content: encoded, branch: BRANCH };
+        if (sha) body.sha = sha;
+        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `token ${getToken()}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.github.v3+json'
+            },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+        return res.json();
+    }
+
+    async function loadPosts() {
+        try {
+            const data = await ghGet(FILE);
+            fileSha = data.sha;
+            posts = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g, '')))));
+            renderList();
+        } catch (e) {
+            if (e.message === '404') { posts = []; fileSha = null; renderList(); }
+            else setStatus('Load failed: ' + e.message, 'err');
+        }
+    }
+
+    function renderList() {
+        const el = document.getElementById('post-list');
+        if (!posts.length) {
+            el.innerHTML = '<p style="font-size:14px;color:#ccc;">No posts yet</p>';
+            return;
+        }
+        el.innerHTML = [...posts].reverse().map(p => `
+            <div class="post-line ${p.id === currentId ? 'active' : ''}" onclick="editPost('${p.id}')">
+                <span>${p.title || '(untitled)'}</span>
+                <span class="dt">${p.date}</span>
+            </div>
+        `).join('');
+    }
+
+    function newPost() {
+        currentId = null;
+        document.getElementById('post-title').value = '';
+        document.getElementById('post-date').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('post-body').value = '';
+        document.getElementById('delete-btn').style.display = 'none';
+        document.getElementById('editor').style.display = 'block';
+        setStatus('');
+        renderList();
+        document.getElementById('post-title').focus();
+    }
+
+    function editPost(id) {
+        const post = posts.find(p => p.id === id);
+        if (!post) return;
+        currentId = id;
+        document.getElementById('post-title').value = post.title;
+        document.getElementById('post-date').value = post.date;
+        document.getElementById('post-body').value = post.body;
+        document.getElementById('delete-btn').style.display = 'inline-flex';
+        document.getElementById('editor').style.display = 'block';
+        setStatus('');
+        renderList();
+    }
+
+    async function publishPost() {
+        const title = document.getElementById('post-title').value.trim();
+        const date  = document.getElementById('post-date').value;
+        const body  = document.getElementById('post-body').value.trim();
+        if (!title || !body) { setStatus('Title and body required', 'err'); return; }
+        setStatus('Saving…', '');
+        try {
+            const fresh = await ghGet(FILE);
+            fileSha = fresh.sha;
+            posts = JSON.parse(decodeURIComponent(escape(atob(fresh.content.replace(/\n/g, '')))));
+
+            if (currentId) {
+                const idx = posts.findIndex(p => p.id === currentId);
+                if (idx !== -1) posts[idx] = { id: currentId, title, date, body };
+            } else {
+                currentId = Date.now().toString();
+                posts.push({ id: currentId, title, date, body });
+            }
+
+            const result = await ghPut(FILE, JSON.stringify(posts, null, 2), fileSha, `${currentId ? 'Update' : 'Add'} thought: ${title}`);
+            fileSha = result.content.sha;
+            setStatus('Published!', 'ok');
+            renderList();
+        } catch (e) {
+            setStatus('Error: ' + e.message, 'err');
+        }
+    }
+
+    async function deletePost() {
+        if (!currentId || !confirm('Delete this post?')) return;
+        setStatus('Deleting…', '');
+        try {
+            const fresh = await ghGet(FILE);
+            fileSha = fresh.sha;
+            posts = JSON.parse(decodeURIComponent(escape(atob(fresh.content.replace(/\n/g, '')))));
+            posts = posts.filter(p => p.id !== currentId);
+
+            const result = await ghPut(FILE, JSON.stringify(posts, null, 2), fileSha, 'Delete thought');
+            fileSha = result.content.sha;
+            currentId = null;
+            document.getElementById('editor').style.display = 'none';
+            setStatus('Deleted', 'ok');
+            renderList();
+        } catch (e) {
+            setStatus('Error: ' + e.message, 'err');
+        }
+    }
+
+    function setStatus(msg, type) {
+        const el = document.getElementById('status');
+        el.textContent = msg;
+        el.className = type || '';
+    }
+</script>
+</body>
+</html>

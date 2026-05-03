@@ -3,20 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thoughts - Alex Yang</title>
+    <title>Thoughts - Seungyong (Alex) Yang</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .post-item { margin-bottom: 40px; }
+        .post-title { font-size: 16px; color: #555; margin-bottom: 4px; }
+        .post-date { font-size: 12px; color: #bbb; margin-bottom: 12px; }
+        .post-body { font-size: 16px; line-height: 1.6; color: #666; white-space: pre-wrap; }
+        .post-divider { border: none; border-top: 1px solid #e0e0e0; margin: 40px 0; }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1><a href="index.html" class="h1-link">Seungyong (Alex) Yang</a></h1>
-        
-        <p>Thoughts coming soon</p>
-        
+
+        <div id="posts"></div>
+
         <div class="nav">
             <a href="index.html" class="nav-btn">home<span class="arrow">→</span></a>
             <a href="quotes.html" class="nav-btn">quotes<span class="arrow">→</span></a>
             <a href="photos.html" class="nav-btn">photos<span class="arrow">→</span></a>
         </div>
     </div>
+    <script>
+        fetch('./posts.json')
+            .then(r => r.json())
+            .then(posts => {
+                const el = document.getElementById('posts');
+                if (!posts.length) {
+                    el.innerHTML = '<p>No thoughts yet.</p>';
+                    return;
+                }
+                const sorted = [...posts].reverse();
+                el.innerHTML = sorted.map((post, i) => `
+                    <div class="post-item">
+                        <div class="post-title">${post.title}</div>
+                        <div class="post-date">${post.date}</div>
+                        <div class="post-body">${post.body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+                    </div>
+                    ${i < sorted.length - 1 ? '<hr class="post-divider">' : ''}
+                `).join('');
+            })
+            .catch(() => {
+                document.getElementById('posts').innerHTML = '<p>No thoughts yet.</p>';
+            });
+    </script>
 </body>
 </html>
