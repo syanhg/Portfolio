@@ -42,12 +42,51 @@ p {
 a {
     color: #666;
     text-decoration: none;
-    border-bottom: 1px solid #666;
-    font-size: 16px;
 }
 
 a:hover {
     opacity: 0.7;
+}
+
+.nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    padding: 6px 14px;
+    border: 1px solid #666;
+    font-size: 16px;
+    font-family: inherit;
+    color: #666;
+    background: transparent;
+    text-decoration: none;
+    cursor: pointer;
+    overflow: hidden;
+    opacity: 1;
+    transition: border-color 0.2s;
+}
+
+.nav-btn .arrow {
+    display: inline-block;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    margin-left: 0;
+    width: 0;
+    overflow: hidden;
+    transition: opacity 0.25s ease, transform 0.25s ease, width 0.25s ease, margin-left 0.25s ease;
+}
+
+.nav-btn:hover {
+    opacity: 1;
+    border-color: #444;
+    color: #444;
+}
+
+.nav-btn:hover .arrow {
+    opacity: 1;
+    transform: translateX(0);
+    width: 1em;
+    margin-left: 6px;
 }
 
 /* Quote page styles */
