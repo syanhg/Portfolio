@@ -110,6 +110,7 @@
     <div class="tabs">
         <button class="tab-btn active" onclick="showTab('thoughts')">thoughts</button>
         <button class="tab-btn"        onclick="showTab('photos')">photos</button>
+        <button class="tab-btn"        onclick="showTab('quotes')">quotes</button>
     </div>
 
     <!-- Thoughts tab -->
@@ -154,6 +155,32 @@
         <button class="nav-btn" onclick="uploadPhoto()">upload<span class="arrow">→</span></button>
         <div id="photo-status" class="status-msg"></div>
         <div id="photo-grid" class="photo-grid"></div>
+    </div>
+
+    <!-- Quotes tab -->
+    <div id="tab-quotes" style="display:none;">
+        <div style="margin-bottom:30px;">
+            <div class="section-header">
+                <span class="section-label">quotes</span>
+                <button class="nav-btn" onclick="newQuote()">new quote<span class="arrow">→</span></button>
+            </div>
+            <div id="quote-list"></div>
+        </div>
+
+        <div id="quote-editor" style="display:none; margin-bottom:30px;">
+            <div class="field">
+                <textarea id="quote-text" placeholder="Quote text..." style="height:120px;"></textarea>
+            </div>
+            <div class="field">
+                <label>author</label>
+                <input type="text" id="quote-author" placeholder="Author">
+            </div>
+            <div class="row">
+                <button class="nav-btn" onclick="saveQuote()">save<span class="arrow">→</span></button>
+                <button class="nav-btn" id="quote-delete-btn" onclick="removeQuote()" style="display:none">delete<span class="arrow">→</span></button>
+            </div>
+            <div id="quote-status" class="status-msg"></div>
+        </div>
     </div>
 
     <div class="nav" style="margin-top:40px;">
@@ -201,12 +228,14 @@
 
     function showTab(tab) {
         activeTab = tab;
-        document.getElementById('tab-thoughts').style.display = tab === 'thoughts' ? 'block' : 'none';
-        document.getElementById('tab-photos').style.display   = tab === 'photos'   ? 'block' : 'none';
+        ['thoughts', 'photos', 'quotes'].forEach(t => {
+            document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none';
+        });
         document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-            btn.classList.toggle('active', (i === 0 && tab === 'thoughts') || (i === 1 && tab === 'photos'));
+            btn.classList.toggle('active', ['thoughts','photos','quotes'][i] === tab);
         });
         if (tab === 'photos') loadPhotos();
+        if (tab === 'quotes') loadQuotes();
     }
 
     // ── Thoughts ────────────────────────────────────────────
@@ -338,6 +367,82 @@
 
     function setPhotoStatus(msg, type) {
         const el = document.getElementById('photo-status');
+        el.textContent = msg;
+        el.className = 'status-msg ' + (type || '');
+    }
+
+    // ── Quotes ───────────────────────────────────────────────
+    let quotes = [];
+    let currentQuoteId = null;
+
+    async function loadQuotes() {
+        const { data, error } = await sb.from('quotes').select('*').order('created_at', { ascending: true });
+        if (error) { setQuoteStatus('Load failed: ' + error.message, 'err'); return; }
+        quotes = data || [];
+        renderQuoteList();
+    }
+
+    function renderQuoteList() {
+        const el = document.getElementById('quote-list');
+        if (!quotes.length) { el.innerHTML = '<p style="font-size:14px;color:#ccc;">No quotes yet</p>'; return; }
+        el.innerHTML = quotes.map((q, i) => `
+            <div class="post-line ${q.id === currentQuoteId ? 'active' : ''}" onclick="editQuote('${q.id}')">
+                <span>${q.text.slice(0, 60)}${q.text.length > 60 ? '…' : ''}</span>
+                <span class="dt">${q.author || ''}</span>
+            </div>
+        `).join('');
+    }
+
+    function newQuote() {
+        currentQuoteId = null;
+        document.getElementById('quote-text').value   = '';
+        document.getElementById('quote-author').value = '';
+        document.getElementById('quote-delete-btn').style.display = 'none';
+        document.getElementById('quote-editor').style.display = 'block';
+        setQuoteStatus('');
+        renderQuoteList();
+        document.getElementById('quote-text').focus();
+    }
+
+    function editQuote(id) {
+        const q = quotes.find(q => q.id === id);
+        if (!q) return;
+        currentQuoteId = id;
+        document.getElementById('quote-text').value   = q.text;
+        document.getElementById('quote-author').value = q.author || '';
+        document.getElementById('quote-delete-btn').style.display = 'inline-flex';
+        document.getElementById('quote-editor').style.display = 'block';
+        setQuoteStatus('');
+        renderQuoteList();
+    }
+
+    async function saveQuote() {
+        const text   = document.getElementById('quote-text').value.trim();
+        const author = document.getElementById('quote-author').value.trim();
+        if (!text) { setQuoteStatus('Quote text required', 'err'); return; }
+        setQuoteStatus('Saving…', '');
+        const payload = { text, author };
+        const { error } = currentQuoteId
+            ? await sb.from('quotes').update(payload).eq('id', currentQuoteId)
+            : await sb.from('quotes').insert(payload);
+        if (error) { setQuoteStatus('Error: ' + error.message, 'err'); return; }
+        setQuoteStatus('Saved!', 'ok');
+        await loadQuotes();
+    }
+
+    async function removeQuote() {
+        if (!currentQuoteId || !confirm('Delete this quote?')) return;
+        setQuoteStatus('Deleting…', '');
+        const { error } = await sb.from('quotes').delete().eq('id', currentQuoteId);
+        if (error) { setQuoteStatus('Error: ' + error.message, 'err'); return; }
+        currentQuoteId = null;
+        document.getElementById('quote-editor').style.display = 'none';
+        setQuoteStatus('Deleted', 'ok');
+        await loadQuotes();
+    }
+
+    function setQuoteStatus(msg, type) {
+        const el = document.getElementById('quote-status');
         el.textContent = msg;
         el.className = 'status-msg ' + (type || '');
     }
