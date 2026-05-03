@@ -52,17 +52,23 @@
             const grid     = document.getElementById('view-grid');
             const btnC     = document.getElementById('btn-carousel');
             const btnG     = document.getElementById('btn-grid');
-            if (mode === 'carousel') {
-                carousel.style.display = '';
-                grid.style.display     = 'none';
-                btnC.classList.add('active');
-                btnG.classList.remove('active');
-            } else {
-                carousel.style.display = 'none';
-                grid.style.display     = '';
-                btnC.classList.remove('active');
-                btnG.classList.add('active');
-            }
+            const [outEl, inEl] = mode === 'carousel' ? [grid, carousel] : [carousel, grid];
+
+            btnC.classList.toggle('active', mode === 'carousel');
+            btnG.classList.toggle('active', mode === 'grid');
+
+            outEl.classList.add('view-hidden');
+            outEl.addEventListener('transitionend', function hide() {
+                outEl.style.display = 'none';
+                outEl.classList.remove('view-hidden');
+                outEl.removeEventListener('transitionend', hide);
+
+                inEl.style.display = mode === 'grid' ? '' : '';
+                inEl.style.opacity = '0';
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => { inEl.style.opacity = ''; });
+                });
+            }, { once: true });
         }
 
         async function loadPhotos() {

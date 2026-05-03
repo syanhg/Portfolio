@@ -63,6 +63,17 @@
     opacity: 0.8;
 }
 
+/* View transition */
+.carousel,
+.photos-grid {
+    transition: opacity 0.25s ease;
+}
+
+.view-hidden {
+    opacity: 0 !important;
+    pointer-events: none;
+}
+
 /* Carousel wrapper - LOCKED */
 .carousel {
     position: relative;
