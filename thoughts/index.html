@@ -8,38 +8,7 @@
     <link rel="stylesheet" href="../style.css">
     <style>
         .post-body { margin-top: 8px; white-space: pre-wrap; }
-        .post-meta {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 4px;
-        }
-        .post-date  { font-size: 12px; color: #bbb; }
-        .vote-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .vote-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 12px;
-            color: #ccc;
-            padding: 0;
-            line-height: 1;
-            transition: color 0.15s;
-        }
-        .vote-btn:hover { color: #888; }
-        .vote-btn.voted-up   { color: #5a9; }
-        .vote-btn.voted-down { color: #c66; }
-        .vote-count {
-            font-size: 12px;
-            color: #bbb;
-            min-width: 12px;
-            text-align: center;
-        }
+        .post-date  { font-size: 12px; color: #bbb; margin-bottom: 4px; }
     </style>
 </head>
 <body>
@@ -62,42 +31,6 @@
             'sb_publishable_UxPaRgkX2R9XHsTbioEfRw_eqPN9azu'
         );
 
-        function getVotes() {
-            try { return JSON.parse(localStorage.getItem('post_votes') || '{}'); } catch { return {}; }
-        }
-
-        function saveVote(id, type) {
-            const v = getVotes();
-            v[id] = type;
-            localStorage.setItem('post_votes', JSON.stringify(v));
-        }
-
-        function esc(s) {
-            return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        }
-
-        async function vote(id, type) {
-            const votes = getVotes();
-            if (votes[id]) return;
-
-            saveVote(id, type);
-
-            const upEl    = document.querySelector(`[data-id="${id}"] .vote-btn.up`);
-            const downEl  = document.querySelector(`[data-id="${id}"] .vote-btn.down`);
-            const countEl = document.querySelector(`[data-id="${id}"] .vote-count`);
-
-            if (upEl && downEl) {
-                upEl.classList.toggle('voted-up', type === 'up');
-                downEl.classList.toggle('voted-down', type === 'down');
-            }
-            if (countEl) {
-                const delta = type === 'up' ? 1 : -1;
-                countEl.textContent = parseInt(countEl.textContent || '0') + delta;
-            }
-
-            await sb.rpc('vote_on_post', { post_id: id, vote_type: type });
-        }
-
         async function load() {
             const el = document.getElementById('posts');
             const { data: posts, error } = await sb
@@ -110,27 +43,15 @@
                 return;
             }
 
-            const votes = getVotes();
-
-            el.innerHTML = posts.map((post, i) => {
-                const myVote = votes[post.id];
-                const score  = (post.upvotes || 0) - (post.downvotes || 0);
-                return `
-                <div class="quote-item" data-id="${post.id}">
+            el.innerHTML = posts.map((post, i) => `
+                <div class="quote-item">
                     <span class="quote-number">${String(i + 1).padStart(2, '0')}</span>
                     <div>
-                        <p class="quote-text">${esc(post.body)}</p>
-                        <div class="post-meta">
-                            <span class="post-date">${post.date}</span>
-                            <div class="vote-row">
-                                <button class="vote-btn up ${myVote === 'up' ? 'voted-up' : ''}" onclick="vote('${post.id}','up')">↑</button>
-                                <span class="vote-count">${score}</span>
-                                <button class="vote-btn down ${myVote === 'down' ? 'voted-down' : ''}" onclick="vote('${post.id}','down')">↓</button>
-                            </div>
-                        </div>
+                        <p class="quote-text">${post.body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+                        <p class="post-date">${post.date}</p>
                     </div>
-                </div>`;
-            }).join('');
+                </div>
+            `).join('');
         }
 
         load();
