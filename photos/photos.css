@@ -138,6 +138,29 @@
     100% { transform: translateX(-1890px); }
 }
 
+/* Skeleton loading */
+.skeleton {
+    background: linear-gradient(90deg, #e8e8e8 25%, #d4d4d4 50%, #e8e8e8 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease infinite;
+    flex-shrink: 0;
+}
+
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-carousel-item {
+    width: 300px;
+    height: 200px;
+}
+
+.skeleton-grid-item {
+    width: calc((100% - 15px) / 2);
+    height: 228px;
+}
+
 /* Lightbox */
 .lightbox {
     display: none;

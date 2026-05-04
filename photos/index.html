@@ -22,9 +22,19 @@
         </div>
 
         <div class="carousel" id="view-carousel">
-            <div class="carousel-track" id="carousel-track"></div>
+            <div class="carousel-track" id="carousel-track" style="animation-play-state:paused">
+                <div class="skeleton skeleton-carousel-item"></div>
+                <div class="skeleton skeleton-carousel-item"></div>
+                <div class="skeleton skeleton-carousel-item"></div>
+                <div class="skeleton skeleton-carousel-item"></div>
+            </div>
         </div>
-        <div class="photos-grid" id="view-grid" style="display:none"></div>
+        <div class="photos-grid" id="view-grid" style="display:none">
+            <div class="skeleton skeleton-grid-item"></div>
+            <div class="skeleton skeleton-grid-item"></div>
+            <div class="skeleton skeleton-grid-item"></div>
+            <div class="skeleton skeleton-grid-item"></div>
+        </div>
 
         <div class="nav">
             <a href="../home"     class="nav-btn">home<span class="arrow">→</span></a>
@@ -91,6 +101,7 @@
 
             // Carousel
             const track   = document.getElementById('carousel-track');
+            track.style.animationPlayState = '';
             const doubled = [...photoList, ...photoList];
             track.innerHTML = doubled.map((p, i) =>
                 `<img src="${p.url}" alt="" onclick="openLightbox(${i % photoList.length})">`
