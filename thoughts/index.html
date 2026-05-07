@@ -22,12 +22,20 @@
             margin-bottom: 0;
         }
 
-        .page-indicator {
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .page-indicator,
+        .year-filter {
             display: inline-flex;
             border: 1px solid #aaa;
         }
 
-        .page-btn {
+        .page-btn,
+        .year-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -43,16 +51,19 @@
             min-width: 28px;
         }
 
-        .page-btn + .page-btn {
+        .page-btn + .page-btn,
+        .year-btn + .year-btn {
             border-left: 1px solid #aaa;
         }
 
-        .page-btn.active {
+        .page-btn.active,
+        .year-btn.active {
             color: #666;
             background: rgba(0,0,0,0.04);
         }
 
-        .page-btn:hover:not(.active) {
+        .page-btn:hover:not(.active),
+        .year-btn:hover:not(.active) {
             color: #888;
         }
     </style>
@@ -61,7 +72,10 @@
     <div class="container">
         <div class="thoughts-header">
             <h1><a href="../home" class="h1-link">Seungyong (Alex) Yang</a></h1>
-            <div class="page-indicator" id="page-indicator"></div>
+            <div class="header-controls">
+                <div class="year-filter" id="year-filter"></div>
+                <div class="page-indicator" id="page-indicator"></div>
+            </div>
         </div>
 
         <div id="posts"></div>
@@ -82,13 +96,13 @@
 
         const PER_PAGE = 4;
         let allPosts = [];
-        let currentPage = 1;
+        let filteredPosts = [];
+        let currentYear = 'all';
 
         function renderPage(page) {
-            currentPage = page;
             const el = document.getElementById('posts');
             const start = (page - 1) * PER_PAGE;
-            const slice = allPosts.slice(start, start + PER_PAGE);
+            const slice = filteredPosts.slice(start, start + PER_PAGE);
 
             el.innerHTML = slice.map((post, i) => `
                 <div class="quote-item">
@@ -105,16 +119,43 @@
             });
         }
 
-        function renderIndicator(totalPages) {
+        function renderIndicator(totalPages, activePage) {
             const indicator = document.getElementById('page-indicator');
             if (totalPages <= 1) {
                 indicator.style.display = 'none';
                 return;
             }
+            indicator.style.display = '';
             indicator.innerHTML = Array.from({ length: totalPages }, (_, i) => {
                 const p = i + 1;
-                return `<button class="page-btn${p === 1 ? ' active' : ''}" data-page="${p}" onclick="renderPage(${p})">${p}</button>`;
+                return `<button class="page-btn${p === activePage ? ' active' : ''}" data-page="${p}" onclick="renderPage(${p})">${p}</button>`;
             }).join('');
+        }
+
+        function applyFilter(year) {
+            currentYear = year;
+            filteredPosts = year === 'all'
+                ? allPosts
+                : allPosts.filter(p => p.date && p.date.startsWith(year));
+
+            document.querySelectorAll('.year-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.year === year);
+            });
+
+            const totalPages = Math.ceil(filteredPosts.length / PER_PAGE);
+            renderIndicator(totalPages, 1);
+            renderPage(1);
+        }
+
+        function renderYearFilter(years) {
+            const filter = document.getElementById('year-filter');
+            if (years.length <= 1) {
+                filter.style.display = 'none';
+                return;
+            }
+            filter.innerHTML = ['all', ...years].map(y =>
+                `<button class="year-btn${y === 'all' ? ' active' : ''}" data-year="${y}" onclick="applyFilter('${y}')">${y}</button>`
+            ).join('');
         }
 
         async function load() {
@@ -127,12 +168,18 @@
             if (error || !posts?.length) {
                 el.innerHTML = '<div class="quote-item"><span class="quote-number">—</span><p class="quote-text">No thoughts yet.</p></div>';
                 document.getElementById('page-indicator').style.display = 'none';
+                document.getElementById('year-filter').style.display = 'none';
                 return;
             }
 
             allPosts = posts;
+            filteredPosts = posts;
+
+            const years = [...new Set(posts.map(p => p.date?.slice(0, 4)).filter(Boolean))].sort((a, b) => b - a);
+            renderYearFilter(years);
+
             const totalPages = Math.ceil(allPosts.length / PER_PAGE);
-            renderIndicator(totalPages);
+            renderIndicator(totalPages, 1);
             renderPage(1);
         }
 
