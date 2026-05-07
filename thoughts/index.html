@@ -9,11 +9,60 @@
     <style>
         .post-body { margin-top: 8px; white-space: pre-wrap; }
         .post-date  { font-size: 12px; color: #bbb; margin-bottom: 4px; }
+
+        .thoughts-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            padding: 0 2px;
+        }
+
+        .thoughts-header h1 {
+            margin-bottom: 0;
+        }
+
+        .page-indicator {
+            display: inline-flex;
+            border: 1px solid #aaa;
+        }
+
+        .page-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 10px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #aaa;
+            font-size: 12px;
+            font-family: inherit;
+            transition: color 0.2s, background 0.2s;
+            line-height: 1;
+            min-width: 28px;
+        }
+
+        .page-btn + .page-btn {
+            border-left: 1px solid #aaa;
+        }
+
+        .page-btn.active {
+            color: #666;
+            background: rgba(0,0,0,0.04);
+        }
+
+        .page-btn:hover:not(.active) {
+            color: #888;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1><a href="../home" class="h1-link">Seungyong (Alex) Yang</a></h1>
+        <div class="thoughts-header">
+            <h1><a href="../home" class="h1-link">Seungyong (Alex) Yang</a></h1>
+            <div class="page-indicator" id="page-indicator"></div>
+        </div>
 
         <div id="posts"></div>
 
@@ -31,6 +80,43 @@
             'sb_publishable_UxPaRgkX2R9XHsTbioEfRw_eqPN9azu'
         );
 
+        const PER_PAGE = 4;
+        let allPosts = [];
+        let currentPage = 1;
+
+        function renderPage(page) {
+            currentPage = page;
+            const el = document.getElementById('posts');
+            const start = (page - 1) * PER_PAGE;
+            const slice = allPosts.slice(start, start + PER_PAGE);
+
+            el.innerHTML = slice.map((post, i) => `
+                <div class="quote-item">
+                    <span class="quote-number">${String(start + i + 1).padStart(2, '0')}</span>
+                    <div>
+                        <p class="quote-text">${post.body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+                        <p class="post-date">${post.date}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            document.querySelectorAll('.page-btn').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.page) === page);
+            });
+        }
+
+        function renderIndicator(totalPages) {
+            const indicator = document.getElementById('page-indicator');
+            if (totalPages <= 1) {
+                indicator.style.display = 'none';
+                return;
+            }
+            indicator.innerHTML = Array.from({ length: totalPages }, (_, i) => {
+                const p = i + 1;
+                return `<button class="page-btn${p === 1 ? ' active' : ''}" data-page="${p}" onclick="renderPage(${p})">${p}</button>`;
+            }).join('');
+        }
+
         async function load() {
             const el = document.getElementById('posts');
             const { data: posts, error } = await sb
@@ -40,18 +126,14 @@
 
             if (error || !posts?.length) {
                 el.innerHTML = '<div class="quote-item"><span class="quote-number">—</span><p class="quote-text">No thoughts yet.</p></div>';
+                document.getElementById('page-indicator').style.display = 'none';
                 return;
             }
 
-            el.innerHTML = posts.map((post, i) => `
-                <div class="quote-item">
-                    <span class="quote-number">${String(i + 1).padStart(2, '0')}</span>
-                    <div>
-                        <p class="quote-text">${post.body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
-                        <p class="post-date">${post.date}</p>
-                    </div>
-                </div>
-            `).join('');
+            allPosts = posts;
+            const totalPages = Math.ceil(allPosts.length / PER_PAGE);
+            renderIndicator(totalPages);
+            renderPage(1);
         }
 
         load();
