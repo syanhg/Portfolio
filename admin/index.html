@@ -103,13 +103,6 @@
         }
         #post-body:focus { border-color: #666; }
         #post-body:empty:before { content: attr(placeholder); color: #bbb; pointer-events: none; }
-        .at-tag {
-            display: inline-block;
-            background: #f0f0f0;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            padding: 1px 6px;
-        }
     </style>
 </head>
 <body>
@@ -267,31 +260,6 @@
             e.preventDefault();
             document.execCommand('insertLineBreak');
             return;
-        }
-        if (e.key === ']') {
-            const sel = window.getSelection();
-            if (!sel.rangeCount) return;
-            const range = sel.getRangeAt(0);
-            if (range.startContainer.nodeType !== Node.TEXT_NODE) return;
-            const before = range.startContainer.textContent.slice(0, range.startOffset);
-            const match = before.match(/@\[([^\]]*)$/);
-            if (!match) return;
-            e.preventDefault();
-            const start = range.startOffset - match[0].length;
-            const r = document.createRange();
-            r.setStart(range.startContainer, start);
-            r.setEnd(range.startContainer, range.startOffset);
-            r.deleteContents();
-            const span = document.createElement('span');
-            span.className = 'at-tag';
-            span.contentEditable = 'false';
-            span.textContent = match[1];
-            r.insertNode(span);
-            const after = document.createRange();
-            after.setStartAfter(span);
-            after.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(after);
         }
     });
     // ── Thoughts ────────────────────────────────────────────
