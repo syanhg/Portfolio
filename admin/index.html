@@ -87,6 +87,29 @@
         }
         .photo-thumb button:hover { background: rgba(0,0,0,0.8); }
         input[type="file"] { border: none; padding: 0; font-size: 14px; color: #999; }
+        #post-body {
+            font-family: inherit;
+            font-size: 16px;
+            color: #666;
+            border: 1px solid #ccc;
+            background: transparent;
+            padding: 4px 8px;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 280px;
+            line-height: 1.6;
+            overflow-y: auto;
+        }
+        #post-body:focus { border-color: #666; }
+        #post-body:empty:before { content: attr(placeholder); color: #bbb; pointer-events: none; }
+        .at-tag {
+            display: inline-block;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 1px 6px;
+        }
     </style>
 </head>
 <body>
@@ -126,7 +149,7 @@
 
         <div id="editor" style="display:none; margin-bottom:30px;">
             <div class="field">
-                <textarea id="post-body" placeholder="Write your thought..."></textarea>
+                <div id="post-body" contenteditable="true" placeholder="Write your thought..."></div>
             </div>
             <div class="field">
                 <label>date</label>
@@ -239,6 +262,38 @@
         if (tab === 'quotes') loadQuotes();
     }
 
+    document.getElementById('post-body').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.execCommand('insertLineBreak');
+            return;
+        }
+        if (e.key === ']') {
+            const sel = window.getSelection();
+            if (!sel.rangeCount) return;
+            const range = sel.getRangeAt(0);
+            if (range.startContainer.nodeType !== Node.TEXT_NODE) return;
+            const before = range.startContainer.textContent.slice(0, range.startOffset);
+            const match = before.match(/@\[([^\]]*)$/);
+            if (!match) return;
+            e.preventDefault();
+            const start = range.startOffset - match[0].length;
+            const r = document.createRange();
+            r.setStart(range.startContainer, start);
+            r.setEnd(range.startContainer, range.startOffset);
+            r.deleteContents();
+            const span = document.createElement('span');
+            span.className = 'at-tag';
+            span.contentEditable = 'false';
+            span.textContent = match[1];
+            r.insertNode(span);
+            const after = document.createRange();
+            after.setStartAfter(span);
+            after.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(after);
+        }
+    });
     // ── Thoughts ────────────────────────────────────────────
     async function loadPosts() {
         const { data, error } = await sb.from('posts').select('*').order('date', { ascending: false });
@@ -247,21 +302,38 @@
         renderList();
     }
 
+    function stripHTML(html) {
+        const d = document.createElement('div');
+        d.innerHTML = html;
+        return d.textContent || '';
+    }
+
     function renderList() {
         const el = document.getElementById('post-list');
         if (!posts.length) { el.innerHTML = '<p style="font-size:14px;color:#ccc;">No posts yet</p>'; return; }
-        el.innerHTML = posts.map(p => `
+        el.innerHTML = posts.map(p => {
+            const preview = stripHTML(p.body);
+            return `
             <div class="post-line ${p.id === currentId ? 'active' : ''}" onclick="editPost('${p.id}')">
-                <span>${p.body.slice(0, 60)}${p.body.length > 60 ? '…' : ''}</span>
+                <span>${preview.slice(0, 60)}${preview.length > 60 ? '…' : ''}</span>
                 <span class="dt">${p.date}</span>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
+    }
+
+    function setBodyHTML(html) {
+        const el = document.getElementById('post-body');
+        el.innerHTML = html.includes('<') ? html : html.replace(/\n/g, '<br>');
+    }
+
+    function getBodyHTML() {
+        return document.getElementById('post-body').innerHTML.trim();
     }
 
     function newPost() {
         currentId = null;
         document.getElementById('post-date').value = new Date().toISOString().slice(0, 10);
-        document.getElementById('post-body').value = '';
+        document.getElementById('post-body').innerHTML = '';
         document.getElementById('delete-btn').style.display = 'none';
         document.getElementById('editor').style.display = 'block';
         setPostStatus('');
@@ -274,7 +346,7 @@
         if (!post) return;
         currentId = id;
         document.getElementById('post-date').value = post.date;
-        document.getElementById('post-body').value = post.body;
+        setBodyHTML(post.body);
         document.getElementById('delete-btn').style.display = 'inline-flex';
         document.getElementById('editor').style.display = 'block';
         setPostStatus('');
@@ -283,8 +355,8 @@
 
     async function save() {
         const date = document.getElementById('post-date').value;
-        const body = document.getElementById('post-body').value.trim();
-        if (!body) { setPostStatus('Write something first', 'err'); return; }
+        const body = getBodyHTML();
+        if (!document.getElementById('post-body').textContent.trim()) { setPostStatus('Write something first', 'err'); return; }
         setPostStatus('Saving…', '');
         const payload = { date, body };
         const { error } = currentId

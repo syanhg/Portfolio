@@ -55,6 +55,13 @@
         .page-btn:hover:not(.active) {
             color: #888;
         }
+        .at-tag {
+            display: inline-block;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 1px 6px;
+        }
     </style>
 </head>
 <body>
@@ -92,7 +99,7 @@
                 <div class="quote-item">
                     <span class="quote-number">${String(start + i + 1).padStart(2, '0')}</span>
                     <div>
-                        <p class="quote-text">${post.body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
+                        <p class="quote-text">${post.body}</p>
                         <p class="post-date">${post.date}</p>
                     </div>
                 </div>
