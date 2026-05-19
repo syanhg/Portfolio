@@ -49,6 +49,17 @@
         #auth-box { display: flex; flex-direction: column; gap: 8px; }
         #auth-box input { width: 240px; }
         #auth-error { font-size: 13px; color: #c55; min-height: 18px; }
+        #recovery-screen {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        #recovery-box { display: flex; flex-direction: column; gap: 8px; }
+        #recovery-box input { width: 240px; }
+        #recovery-error { font-size: 13px; color: #c55; min-height: 18px; }
+        #recovery-ok { font-size: 13px; color: #5a9; min-height: 18px; }
         .section-header {
             display: flex;
             justify-content: space-between;
@@ -111,6 +122,18 @@
     </style>
 </head>
 <body>
+
+<!-- Password recovery screen -->
+<div id="recovery-screen">
+    <div id="recovery-box">
+        <p style="font-size:14px;color:#999;margin:0 0 4px;">set new password</p>
+        <input type="password" id="new-password" placeholder="new password" autofocus>
+        <input type="password" id="confirm-password" placeholder="confirm password">
+        <button class="nav-btn" id="reset-btn">update password<span class="arrow">→</span></button>
+        <div id="recovery-error"></div>
+        <div id="recovery-ok"></div>
+    </div>
+</div>
 
 <!-- Login screen -->
 <div id="auth-screen">
@@ -223,7 +246,38 @@
     let posts = [];
     let activeTab = 'thoughts';
 
-    sb.auth.getSession().then(({ data: { session } }) => { if (session) showAdmin(); });
+    // Handle password recovery flow from email link
+    (function handleRecovery() {
+        const hash = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+        if (hash.type !== 'recovery') return;
+        // Exchange the token so the session is active, then show reset UI
+        sb.auth.setSession({ access_token: hash.access_token, refresh_token: hash.refresh_token }).then(() => {
+            history.replaceState(null, '', location.pathname);
+            document.getElementById('auth-screen').style.display = 'none';
+            const rs = document.getElementById('recovery-screen');
+            rs.style.display = 'flex';
+            document.getElementById('reset-btn').onclick = async () => {
+                const pw  = document.getElementById('new-password').value;
+                const pw2 = document.getElementById('confirm-password').value;
+                const err = document.getElementById('recovery-error');
+                const ok  = document.getElementById('recovery-ok');
+                err.textContent = '';
+                ok.textContent  = '';
+                if (pw.length < 6)    { err.textContent = 'Password must be at least 6 characters'; return; }
+                if (pw !== pw2)       { err.textContent = 'Passwords do not match'; return; }
+                const { error } = await sb.auth.updateUser({ password: pw });
+                if (error) { err.textContent = error.message; return; }
+                ok.textContent = 'Password updated! Signing you in…';
+                setTimeout(() => { rs.style.display = 'none'; showAdmin(); }, 1200);
+            };
+        });
+    })();
+
+    sb.auth.getSession().then(({ data: { session } }) => {
+        const hash = Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+        if (hash.type === 'recovery') return; // handled above
+        if (session) showAdmin();
+    });
 
     document.getElementById('login-btn').onclick = login;
     ['email', 'password'].forEach(id =>
