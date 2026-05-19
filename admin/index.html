@@ -145,6 +145,7 @@
         <input type="password" id="password" placeholder="password">
         <button class="nav-btn" id="login-btn">sign in<span class="arrow">→</span></button>
         <div id="auth-error"></div>
+        <button onclick="forgotPassword()" style="font-size:12px;color:#bbb;cursor:pointer;background:none;border:none;font-family:inherit;padding:0;text-align:left;">forgot password</button>
     </div>
 </div>
 
@@ -298,6 +299,15 @@
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) { errEl.textContent = error.message; return; }
         showAdmin();
+    }
+
+    async function forgotPassword() {
+        const email = document.getElementById('email').value.trim() || 'seungyong@getsoffo.com';
+        const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: 'https://alxyang.com/admin' });
+        const errEl = document.getElementById('auth-error');
+        if (error) { errEl.textContent = error.message; return; }
+        errEl.style.color = '#5a9';
+        errEl.textContent = 'Reset email sent!';
     }
 
     async function signOut() { await sb.auth.signOut(); location.reload(); }
